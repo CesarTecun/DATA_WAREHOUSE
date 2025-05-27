@@ -1,0 +1,45 @@
+version: '3.8'
+
+networks:
+  dw_net:
+
+services:
+  postgres_dw:
+    image: postgres:15
+    container_name: postgres_dw
+    environment:
+      POSTGRES_DB: dw_transito
+      POSTGRES_USER: dw_user
+      POSTGRES_PASSWORD: dw_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d
+      - ./data:/data
+    networks:
+      - dw_net
+
+  etl_dw:
+    image: python:3.11-slim
+    container_name: etl_dw
+    depends_on:
+      - postgres_dw
+    links:
+      - postgres_dw
+    volumes:
+      - ./data:/data
+      - ./generar_accidentes_csv.py:/etl/generar_accidentes_csv.py
+      - ./populate_dw.py:/etl/populate_dw.py
+      - ./requirements.txt:/etl/requirements.txt
+    working_dir: /etl
+    environment:
+      PGHOST: postgres_dw
+      PGUSER: dw_user
+      PGPASSWORD: dw_password
+      PGDATABASE: dw_transito
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt &&
+             python3 /etl/generar_accidentes_csv.py &&
+             python3 /etl/populate_dw.py"
+    networks:
+      - dw_net

@@ -50,9 +50,40 @@ SQL_POPULATE = [
 
     # Dim Vehículo
     """
-    INSERT INTO dim_vehiculo(tipo_vehiculo, marca, color, modelo)
-    SELECT DISTINCT tipo_veh, marca_veh, color_veh, modelo_veh
+    -- Primero aseguramos que todos los valores de referencia existan
+    INSERT INTO ref_tipo_vehiculo (cod_tipo, descripcion)
+    SELECT DISTINCT 
+           CAST(tipo_veh AS INT), 
+           'Tipo ' || tipo_veh
     FROM stg_vehiculos
+    WHERE tipo_veh IS NOT NULL AND tipo_veh ~ '^[0-9]+$'
+    ON CONFLICT (cod_tipo) DO NOTHING;
+
+    INSERT INTO ref_marca_vehiculo (cod_marca, descripcion)
+    SELECT DISTINCT 
+           CAST(marca_veh AS INT), 
+           'Marca ' || marca_veh
+    FROM stg_vehiculos
+    WHERE marca_veh IS NOT NULL AND marca_veh ~ '^[0-9]+$'
+    ON CONFLICT (cod_marca) DO NOTHING;
+
+    INSERT INTO ref_color_vehiculo (cod_color, descripcion)
+    SELECT DISTINCT 
+           CAST(color_veh AS INT), 
+           'Color ' || color_veh
+    FROM stg_vehiculos
+    WHERE color_veh IS NOT NULL AND color_veh ~ '^[0-9]+$'
+    ON CONFLICT (cod_color) DO NOTHING;
+
+    -- Luego insertamos en dim_vehiculo usando las referencias
+    INSERT INTO dim_vehiculo(tipo_vehiculo, marca, color, modelo)
+    SELECT DISTINCT
+           CASE WHEN tipo_veh ~ '^[0-9]+$' THEN CAST(tipo_veh AS INT) ELSE 0 END,
+           CASE WHEN marca_veh ~ '^[0-9]+$' THEN CAST(marca_veh AS INT) ELSE 0 END,
+           CASE WHEN color_veh ~ '^[0-9]+$' THEN CAST(color_veh AS INT) ELSE 0 END,
+           modelo_veh
+    FROM stg_vehiculos
+    WHERE tipo_veh IS NOT NULL OR marca_veh IS NOT NULL OR color_veh IS NOT NULL
     ON CONFLICT DO NOTHING;
     """,
 
@@ -90,9 +121,9 @@ SQL_POPULATE = [
       JOIN dim_persona          dp  ON (CASE WHEN sf.sexo=1 THEN 'M' ELSE 'F' END)=dp.sexo
                                  AND sf.edad        = dp.edad
                                  AND (CASE WHEN sf.fall_les=1 THEN 'Fallecido' ELSE 'Lesionado' END)=dp.condicion
-      JOIN dim_vehiculo         dv  ON dv.tipo_vehiculo = sf.tipo_veh
-                                 AND dv.marca        = sf.marca_veh
-                                 AND dv.color        = sf.color_veh
+      JOIN dim_vehiculo         dv  ON dv.tipo_vehiculo = CASE WHEN sf.tipo_veh ~ '^[0-9]+$' THEN CAST(sf.tipo_veh AS INT) ELSE 0 END
+                                 AND dv.marca        = CASE WHEN sf.marca_veh ~ '^[0-9]+$' THEN CAST(sf.marca_veh AS INT) ELSE 0 END
+                                 AND dv.color        = CASE WHEN sf.color_veh ~ '^[0-9]+$' THEN CAST(sf.color_veh AS INT) ELSE 0 END
                                  AND dv.modelo       = sf.modelo_veh
       JOIN dim_tipo_accidente   dta ON sf.tipo_eve::TEXT = dta.descripcion
     ON CONFLICT DO NOTHING;

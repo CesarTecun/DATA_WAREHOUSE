@@ -291,6 +291,23 @@ CREATE TABLE IF NOT EXISTS dim_tipo_accidente (
     descripcion       TEXT UNIQUE
 );
 
+-- Insertar tipos de accidente
+INSERT INTO dim_tipo_accidente (tipo_accidente_id, descripcion) VALUES
+  (1,  'Colisión entre vehículos en el mismo sentido en tramo recto'),
+  (2,  'Colisión entre vehículos en sentidos opuestos en tramo recto'),
+  (3,  'Colisión entre vehículos en el mismo sentido en intersección'),
+  (4,  'Colisión entre vehículos en sentidos opuestos en intersección'),
+  (5,  'Colisión entre vehículos desde carriles contiguos en intersección'),
+  (6,  'Colisión entre vehículo y peatón'),
+  (7,  'Colisión con vehículo estacionado o detenido'),
+  (8,  'Colisión con objeto fijo'),
+  (9,  'Salida de la vía sin colisión'),
+  (10, 'Vuelco sin colisión'),
+  (11, 'Colisión con animal'),
+  (12, 'Colisión con tren'),
+  (99, 'Otro tipo de accidente')
+ON CONFLICT (tipo_accidente_id) DO NOTHING;
+
 -- No agregamos restricciones de clave foránea para dim_ubicacion por ahora
 
 -- ======================================
@@ -869,14 +886,15 @@ ON CONFLICT DO NOTHING;
 
 
 -- Dim Tipo de Accidente (de stg_fallecidos y stg_hechos)
-INSERT INTO dim_tipo_accidente (descripcion)
-SELECT DISTINCT tipo_eve::TEXT
-FROM (
-  SELECT tipo_eve FROM stg_fallecidos
-  UNION
-  SELECT tipo_eve FROM stg_hechos
-) a
-ON CONFLICT DO NOTHING;
+-- Comentado porque ahora tenemos valores predefinidos en dim_tipo_accidente
+-- INSERT INTO dim_tipo_accidente (descripcion)
+-- SELECT DISTINCT tipo_eve::TEXT
+-- FROM (
+--   SELECT tipo_eve FROM stg_fallecidos
+--   UNION
+--   SELECT tipo_eve FROM stg_hechos
+-- ) a
+-- ON CONFLICT DO NOTHING;
 
 -- ======================================
 -- 6) Poblar Hechos (nivel persona + vehículo)
@@ -905,5 +923,5 @@ FROM stg_fallecidos sf
                            AND dv.marca        = CASE WHEN sf.marca_veh ~ '^[0-9]+$' THEN CAST(sf.marca_veh AS INT) ELSE 0 END
                            AND dv.color        = CASE WHEN sf.color_veh ~ '^[0-9]+$' THEN CAST(sf.color_veh AS INT) ELSE 0 END
                            AND dv.modelo       = sf.modelo_veh
-  JOIN dim_tipo_accidente dta ON sf.tipo_eve::TEXT = dta.descripcion
+  JOIN dim_tipo_accidente dta ON sf.tipo_eve = dta.tipo_accidente_id
 ON CONFLICT DO NOTHING;

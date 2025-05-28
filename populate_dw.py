@@ -87,17 +87,17 @@ SQL_POPULATE = [
     ON CONFLICT DO NOTHING;
     """,
 
-    # Dim Tipo de Accidente
-    """
-    INSERT INTO dim_tipo_accidente(descripcion)
-    SELECT DISTINCT tipo_eve::TEXT
-    FROM (
-      SELECT tipo_eve FROM stg_fallecidos
-      UNION ALL
-      SELECT tipo_eve FROM stg_hechos
-    ) x
-    ON CONFLICT DO NOTHING;
-    """,
+    # Dim Tipo de Accidente - Comentado porque ahora usamos valores predefinidos
+    # """
+    # INSERT INTO dim_tipo_accidente(descripcion)
+    # SELECT DISTINCT tipo_eve::TEXT
+    # FROM (
+    #   SELECT tipo_eve FROM stg_fallecidos
+    #   UNION ALL
+    #   SELECT tipo_eve FROM stg_hechos
+    # ) x
+    # ON CONFLICT DO NOTHING;
+    # """,
 
     # Hechos de accidentes
     """
@@ -125,7 +125,7 @@ SQL_POPULATE = [
                                  AND dv.marca        = CASE WHEN sf.marca_veh ~ '^[0-9]+$' THEN CAST(sf.marca_veh AS INT) ELSE 0 END
                                  AND dv.color        = CASE WHEN sf.color_veh ~ '^[0-9]+$' THEN CAST(sf.color_veh AS INT) ELSE 0 END
                                  AND dv.modelo       = sf.modelo_veh
-      JOIN dim_tipo_accidente   dta ON sf.tipo_eve::TEXT = dta.descripcion
+      JOIN dim_tipo_accidente   dta ON sf.tipo_eve = dta.tipo_accidente_id
     ON CONFLICT DO NOTHING;
     """
 ]

@@ -1,0 +1,12 @@
+{
+    "table_name": "dim_persona",
+    "source_file": "dim_persona_20250528.csv",
+    "columns": [
+        "persona_id",
+        "sexo",
+        "edad",
+        "condicion"
+    ],
+    "row_count": 349,
+    "processed_date": "2025-05-28 22:04:46"
+}

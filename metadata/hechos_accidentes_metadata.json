@@ -1,0 +1,16 @@
+{
+    "table_name": "hechos_accidentes",
+    "source_file": "hechos_accidentes_20250528.csv",
+    "columns": [
+        "id_hecho",
+        "fecha_id",
+        "ubicacion_id",
+        "persona_id",
+        "vehiculo_id",
+        "tipo_accidente_id",
+        "num_heridos",
+        "num_fallecidos"
+    ],
+    "row_count": 11160,
+    "processed_date": "2025-05-28 22:04:46"
+}

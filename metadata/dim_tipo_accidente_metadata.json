@@ -1,0 +1,10 @@
+{
+    "table_name": "dim_tipo_accidente",
+    "source_file": "dim_tipo_accidente_20250528.csv",
+    "columns": [
+        "tipo_accidente_id",
+        "descripcion"
+    ],
+    "row_count": 13,
+    "processed_date": "2025-05-28 22:04:46"
+}

@@ -1,0 +1,10 @@
+{
+    "table_name": "ref_marca_vehiculo",
+    "source_file": "ref_marca_vehiculo_20250528.csv",
+    "columns": [
+        "cod_marca",
+        "descripcion"
+    ],
+    "row_count": 119,
+    "processed_date": "2025-05-28 22:04:46"
+}

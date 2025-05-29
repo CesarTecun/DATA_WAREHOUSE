@@ -1,0 +1,78 @@
+{
+    "job_name": "DW_ETL_Process",
+    "created_date": "2025-05-28 22:04:46",
+    "tables": [
+        {
+            "table_name": "dim_tipo_accidente",
+            "stage_file": "stage_area/dim_tipo_accidente.csv",
+            "metadata_file": "metadata/dim_tipo_accidente_metadata.json"
+        },
+        {
+            "table_name": "dim_ubicacion",
+            "stage_file": "stage_area/dim_ubicacion.csv",
+            "metadata_file": "metadata/dim_ubicacion_metadata.json"
+        },
+        {
+            "table_name": "ref_municipios",
+            "stage_file": "stage_area/ref_municipios.csv",
+            "metadata_file": "metadata/ref_municipios_metadata.json"
+        },
+        {
+            "table_name": "dim_vehiculo",
+            "stage_file": "stage_area/dim_vehiculo.csv",
+            "metadata_file": "metadata/dim_vehiculo_metadata.json"
+        },
+        {
+            "table_name": "ref_color_vehiculo",
+            "stage_file": "stage_area/ref_color_vehiculo.csv",
+            "metadata_file": "metadata/ref_color_vehiculo_metadata.json"
+        },
+        {
+            "table_name": "dim_persona",
+            "stage_file": "stage_area/dim_persona.csv",
+            "metadata_file": "metadata/dim_persona_metadata.json"
+        },
+        {
+            "table_name": "ref_departamentos",
+            "stage_file": "stage_area/ref_departamentos.csv",
+            "metadata_file": "metadata/ref_departamentos_metadata.json"
+        },
+        {
+            "table_name": "hechos_accidentes",
+            "stage_file": "stage_area/hechos_accidentes.csv",
+            "metadata_file": "metadata/hechos_accidentes_metadata.json"
+        },
+        {
+            "table_name": "dim_fecha",
+            "stage_file": "stage_area/dim_fecha.csv",
+            "metadata_file": "metadata/dim_fecha_metadata.json"
+        },
+        {
+            "table_name": "ref_marca_vehiculo",
+            "stage_file": "stage_area/ref_marca_vehiculo.csv",
+            "metadata_file": "metadata/ref_marca_vehiculo_metadata.json"
+        },
+        {
+            "table_name": "ref_tipo_vehiculo",
+            "stage_file": "stage_area/ref_tipo_vehiculo.csv",
+            "metadata_file": "metadata/ref_tipo_vehiculo_metadata.json"
+        }
+    ],
+    "stages": [
+        {
+            "name": "Extract from CSV",
+            "type": "CSV Input",
+            "description": "Extract data from CSV files"
+        },
+        {
+            "name": "Transform",
+            "type": "Data Processing",
+            "description": "Apply business rules and transformations"
+        },
+        {
+            "name": "Load",
+            "type": "Table Output",
+            "description": "Load data into target tables"
+        }
+    ]
+}

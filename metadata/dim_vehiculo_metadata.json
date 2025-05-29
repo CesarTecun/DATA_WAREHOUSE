@@ -1,0 +1,13 @@
+{
+    "table_name": "dim_vehiculo",
+    "source_file": "dim_vehiculo_20250528.csv",
+    "columns": [
+        "vehiculo_id",
+        "tipo_vehiculo",
+        "marca",
+        "color",
+        "modelo"
+    ],
+    "row_count": 3555,
+    "processed_date": "2025-05-28 22:04:46"
+}

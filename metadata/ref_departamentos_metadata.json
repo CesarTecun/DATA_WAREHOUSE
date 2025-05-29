@@ -1,0 +1,10 @@
+{
+    "table_name": "ref_departamentos",
+    "source_file": "ref_departamentos_20250528.csv",
+    "columns": [
+        "cod_depto",
+        "nombre_depto"
+    ],
+    "row_count": 22,
+    "processed_date": "2025-05-28 22:04:46"
+}

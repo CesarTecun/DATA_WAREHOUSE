@@ -1,0 +1,14 @@
+{
+    "table_name": "dim_fecha",
+    "source_file": "dim_fecha_20250528.csv",
+    "columns": [
+        "fecha_id",
+        "fecha",
+        "anio",
+        "mes",
+        "dia",
+        "dia_semana"
+    ],
+    "row_count": 365,
+    "processed_date": "2025-05-28 22:04:46"
+}

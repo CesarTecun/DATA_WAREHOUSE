@@ -1,0 +1,11 @@
+{
+    "table_name": "ref_municipios",
+    "source_file": "ref_municipios_20250528.csv",
+    "columns": [
+        "cod_depto",
+        "cod_mupio",
+        "nombre_mupio"
+    ],
+    "row_count": 338,
+    "processed_date": "2025-05-28 22:04:46"
+}

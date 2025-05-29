@@ -1,0 +1,12 @@
+{
+    "table_name": "dim_ubicacion",
+    "source_file": "dim_ubicacion_20250528.csv",
+    "columns": [
+        "ubicacion_id",
+        "cod_depto",
+        "cod_mupio",
+        "zona"
+    ],
+    "row_count": 544,
+    "processed_date": "2025-05-28 22:04:46"
+}

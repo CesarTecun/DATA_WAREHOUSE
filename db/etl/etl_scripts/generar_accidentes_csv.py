@@ -4,9 +4,9 @@ import csv
 from datetime import datetime
 
 # 1) Definimos rutas dentro del contenedor Docker
-BASE = "/data"
+BASE = "/app/data"
 XLSX_FALLE = BASE + "/fallecidos-y-lesionados-2023-pnc.xlsx"
-XLSX_HECH  = BASE + "/hehos-de-transito-2023-pnc.xlsx"
+XLSX_HECH  = BASE + "/hechos-de-transito-2023-pnc.xlsx"
 XLSX_VEH   = BASE + "/vehiculos-involucrados-2023-pnc.xlsx"
 
 CSV_FALLE = BASE + "/stg_fallecidos.csv"

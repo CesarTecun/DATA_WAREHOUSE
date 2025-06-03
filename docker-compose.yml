@@ -7,6 +7,7 @@ services:
   postgres_dw:
     image: postgres:15
     container_name: postgres_dw
+    restart: unless-stopped
     environment:
       POSTGRES_DB: dw_transito
       POSTGRES_USER: dw_user
@@ -14,32 +15,71 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./init:/docker-entrypoint-initdb.d
-      - ./data:/data
+      # 1) Persistencia de datos
+      - banco_data:/var/lib/postgresql/data
+
+      # 2) Montar los scripts SQL de inicialización (catálogos, OLTP y dimensional)
+      - ./db/init:/docker-entrypoint-initdb.d
+
+      # 3) Montar la carpeta data (Excel + CSV generados)
+      #    para que el contenedor pueda acceder a los CSV “stg_*.csv”
+      - ./data:/app/data
+
     networks:
       - dw_net
 
-  etl_dw:
-    image: python:3.11-slim
-    container_name: etl_dw
+  etl:
+    build:
+      context: ./db/etl
+      dockerfile: Dockerfile
+    container_name: dw_etl
+    restart: "no"
     depends_on:
       - postgres_dw
-    links:
-      - postgres_dw
     volumes:
-      - ./data:/data
-      - ./generar_accidentes_csv.py:/etl/generar_accidentes_csv.py
-      - ./populate_dw.py:/etl/populate_dw.py
-      - ./requirements.txt:/etl/requirements.txt
-    working_dir: /etl
+      # 1) Montar los CSV en /app/data (misma carpeta que en postgres_dw)
+      - ./data:/app/data
+
+      # 2) Montar los scripts SQL de transformación (STG_RAW → OLTP)
+      - ./db/transform:/app/transform
+
+      # 3) Montar los scripts Python de ETL (actualizar contadores y DW dimensional)
+      - ./db/etl:/app/etl_scripts
+
     environment:
-      PGHOST: postgres_dw
-      PGUSER: dw_user
-      PGPASSWORD: dw_password
-      PGDATABASE: dw_transito
+      DB_HOST: postgres_dw
+      DB_PORT: 5432
+      DB_NAME: dw_transito
+      DB_USER: dw_user
+      DB_PASS: dw_password
+
+    working_dir: /app
     command: >
-      sh -c "pip install --no-cache-dir -r requirements.txt &&
-             python3 /etl/generar_accidentes_csv.py &&
-             python3 /etl/populate_dw.py"
+      sh -c "
+        echo '⏳ Esperando a que Postgres levante…';
+        sleep 10;
+
+        # — 1) Cargar CSV planos a las tablas STG_RAW —
+        psql -h $DB_HOST -U $DB_USER -d $DB_NAME -c \"\copy stg_hechos_raw FROM '/app/data/stg_hechos.csv' CSV HEADER;\";
+        psql -h $DB_HOST -U $DB_USER -d $DB_NAME -c \"\copy stg_victimas_raw FROM '/app/data/stg_fallecidos.csv' CSV HEADER;\";
+        psql -h $DB_HOST -U $DB_USER -d $DB_NAME -c \"\copy stg_vehiculos_raw FROM '/app/data/stg_vehiculos.csv' CSV HEADER;\"
+
+        # — 2) Transformar STG_RAW → tablas transaccionales OLTP —
+        psql -h $DB_HOST -U $DB_USER -d $DB_NAME -f /app/transform/load_hechos.sql;
+        psql -h $DB_HOST -U $DB_USER -d $DB_NAME -f /app/transform/load_victimas.sql;
+        psql -h $DB_HOST -U $DB_USER -d $DB_NAME -f /app/transform/load_vehiculos.sql;
+
+        # — 3) Actualizar contadores en HECHOS (número de vehículos y víctimas) —
+        python3 /app/etl_scripts/actualizar_contadores.py;
+
+        # — 4) Generar CSV planos (mismos que hacías) —
+        python3 /app/data/../generar_accidentes_csv.py;
+
+        # — 5) Poblar el Data Warehouse dimensional (ahora leyendo de OLTP) —
+        python3 /app/etl_scripts/populate_dw_updated.py
+      "
     networks:
       - dw_net
+
+volumes:
+  banco_data:

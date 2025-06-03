@@ -1,7 +1,44 @@
 --
 -- 02_create_transaccional.sql
 -- Crea las tablas transaccionales (OLTP) y las tablas de errores
---
+
+-- 1) Tabla staging para hechos (ajustada al CSV real)
+CREATE TABLE IF NOT EXISTS stg_hechos (
+    fecha      DATE,
+    cod_depto  INTEGER,
+    cod_mupio  INTEGER,
+    zona       INTEGER,
+    tipo_eve   INTEGER
+);
+
+
+-- 2) Tabla staging para fallecidos/lesionados
+CREATE TABLE IF NOT EXISTS stg_fallecidos (
+    fecha      DATE,
+    cod_depto  INTEGER,
+    cod_mupio  INTEGER,
+    zona       INTEGER,
+    sexo       VARCHAR(10),   -- o CHAR(1) si solo tiene “M”/“F”
+    edad       INTEGER,
+    tipo_veh   INTEGER,
+    marca_veh  INTEGER,
+    color_veh  INTEGER,
+    modelo_veh INTEGER,
+    tipo_eve   VARCHAR(50),   -- depende de cómo esté en tu CSV
+    fall_les   VARCHAR(20)    -- por ejemplo “Fallecido”/“Lesionado”
+);
+
+-- 3) Tabla staging para vehículos
+CREATE TABLE IF NOT EXISTS stg_vehiculos (
+    fecha      DATE,
+    cod_depto  INTEGER,
+    cod_mupio  INTEGER,
+    zona       INTEGER,
+    tipo_veh   INTEGER,
+    marca_veh  INTEGER,
+    color_veh  INTEGER,
+    modelo_veh INTEGER
+);
 
 -- Tabla HECHOS
 CREATE TABLE IF NOT EXISTS HECHOS (
@@ -10,6 +47,8 @@ CREATE TABLE IF NOT EXISTS HECHOS (
   hora_incidente         VARCHAR(5)   NULL,
   cod_depto              INTEGER      NOT NULL,
   cod_mupio              INTEGER      NOT NULL,
+  zona                   INTEGER      NULL,    -- <--- se añade
+  tipo_accidente_id      INTEGER      NULL,    -- <--- se añade
   tipo_via               VARCHAR(50)  NULL,
   condicion_climatica    VARCHAR(50)  NULL,
   duracion_intervencion  NUMERIC(7,2) NULL,
@@ -18,6 +57,11 @@ CREATE TABLE IF NOT EXISTS HECHOS (
   CONSTRAINT fk_hechos_muni
     FOREIGN KEY (cod_depto, cod_mupio)
     REFERENCES ref_municipios(cod_depto, cod_mupio)
+  -- opcional: podrías agregar también FK a dim_tipo_accidente, 
+  -- pero como esa dimensión se crea en 03…, a veces lo dejamos sin constraint aquí:
+  -- , CONSTRAINT fk_hechos_tipo_acc
+  --    FOREIGN KEY (tipo_accidente_id) 
+  --    REFERENCES dim_tipo_accidente(tipo_accidente_id)
 );
 
 -- Tabla VICTIMAS

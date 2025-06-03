@@ -1,70 +1,61 @@
---
 -- load_vehiculos.sql
--- De STG_VEHICULOS_RAW a VEHICULOS
+-- De STG_VEHICULOS a VEHICULOS
 --
 
 BEGIN;
 
+-- Eliminamos cualquier temp previa
 DROP TABLE IF EXISTS temp_vehiculos_map;
+
+-- Creamos la tabla temporal con la lógica mínima:
+-- - id_hecho: lo buscamos igual que en load_victimas (fechas y códigos)
+-- - cod_tipo, cod_marca, cod_color, modelo: vienen de stg_vehiculos, pero convertidos a INTEGER para validar FK
 CREATE TEMP TABLE temp_vehiculos_map AS
 SELECT
-  CAST(v.id_vehiculo_raw AS INTEGER)        AS id_vehiculo,
-  CAST(v.id_hecho_raw   AS INTEGER)        AS id_hecho,
-  tv.tipo_vehiculo_id                         AS tipo_vehiculo_id,
-  v.marca_raw                                 AS marca,
-  v.modelo_raw                                AS modelo,
-  CASE
-    WHEN v.anio_vehiculo_raw ~ '^[0-9]{4}$'
-      THEN CAST(v.anio_vehiculo_raw AS INTEGER)
-    ELSE NULL
-  END                                         AS anio_vehiculo,
-  ev.estado_vehiculo_id                       AS estado_vehiculo_id
-FROM stg_vehiculos_raw v
-LEFT JOIN CAT_TIPO_VEHICULO tv
-  ON tv.descripcion = UPPER(v.tipo_vehiculo_raw)
-LEFT JOIN CAT_ESTADO_VEHICULO ev
-  ON ev.descripcion = UPPER(v.estado_vehiculo_raw)
-WHERE v.id_vehiculo_raw IS NOT NULL
-  AND v.id_hecho_raw   IS NOT NULL;
+  h.id_hecho                                                               AS id_hecho,
+  -- Convertimos a integer para que coincida con ref_tipo_vehiculo.cod_tipo
+  (v.tipo_veh::INTEGER)                                                     AS cod_tipo,
+  -- Convertimos a integer para que coincida con ref_marca_vehiculo.cod_marca
+  (v.marca_veh::INTEGER)                                                    AS cod_marca,
+  v.modelo_veh                                                              AS modelo,
+  -- Convertimos a integer para que coincida con ref_color_vehiculo.cod_color
+  (v.color_veh::INTEGER)                                                     AS cod_color
+FROM stg_vehiculos v
+  JOIN HECHOS h
+    ON h.fecha_incidente    = v.fecha
+   AND h.cod_depto          = v.cod_depto
+   AND h.cod_mupio          = v.cod_mupio
+   AND h.zona               = v.zona
+   -- Aquí suponemos que "tipo_accidente_id" corresponde al campo de hecho,
+   -- y "v.tipo_veh" era el campo numérico del tipo de vehículo; los unimos directamente.
+   AND h.tipo_accidente_id  = (v.tipo_veh::INTEGER)
+WHERE v.tipo_veh IS NOT NULL
+  AND v.marca_veh IS NOT NULL
+  AND v.color_veh IS NOT NULL
+;
 
--- Insertar sólo filas válidas
+-- Insertar únicamente filas válidas en VEHICULOS, 
+-- descartando aquellas cuyo tipo, marca o color no exista en su tabla de catálogo:
 INSERT INTO VEHICULOS (
-  id_vehiculo,
   id_hecho,
-  tipo_vehiculo_id,
-  marca,
+  cod_tipo,
+  cod_marca,
   modelo,
-  anio_vehiculo,
-  estado_vehiculo_id
+  cod_color
 )
 SELECT
-  id_vehiculo,
-  id_hecho,
-  tipo_vehiculo_id,
-  marca,
-  modelo,
-  anio_vehiculo,
-  estado_vehiculo_id
-FROM temp_vehiculos_map
-WHERE id_hecho IN (SELECT id_hecho FROM HECHOS)
-  AND tipo_vehiculo_id IS NOT NULL;
-
--- Registrar errores
-INSERT INTO ERRORES_VEHICULOS (id_vehiculo_raw, mensaje_error)
-SELECT
-  v.id_vehiculo_raw,
-  'Hecho inexistente o tipo_vehiculo/estado no mapeados: '
-   || v.id_hecho_raw 
-   || ' / ' || v.tipo_vehiculo_raw 
-   || ' / ' || v.estado_vehiculo_raw
-FROM stg_vehiculos_raw v
-LEFT JOIN CAT_TIPO_VEHICULO tv
-  ON tv.descripcion = UPPER(v.tipo_vehiculo_raw)
-LEFT JOIN CAT_ESTADO_VEHICULO ev
-  ON ev.descripcion = UPPER(v.estado_vehiculo_raw)
-LEFT JOIN HECHOS h
-  ON h.id_hecho = CAST(v.id_hecho_raw AS INTEGER)
-WHERE h.id_hecho IS NULL
-   OR tv.tipo_vehiculo_id IS NULL;
+  tm.id_hecho,
+  tm.cod_tipo,
+  tm.cod_marca,
+  tm.modelo,
+  tm.cod_color
+FROM temp_vehiculos_map tm
+-- Validamos existencia en ref_tipo_vehiculo
+JOIN ref_tipo_vehiculo   rtv ON rtv.cod_tipo  = tm.cod_tipo
+-- Validamos existencia en ref_marca_vehiculo
+JOIN ref_marca_vehiculo  rmv ON rmv.cod_marca = tm.cod_marca
+-- Validamos existencia en ref_color_vehiculo
+JOIN ref_color_vehiculo  rcv ON rcv.cod_color = tm.cod_color
+ON CONFLICT ON CONSTRAINT VEHICULOS_pkey DO NOTHING;
 
 COMMIT;

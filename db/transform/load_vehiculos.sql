@@ -26,9 +26,6 @@ FROM stg_vehiculos v
    AND h.cod_depto          = v.cod_depto
    AND h.cod_mupio          = v.cod_mupio
    AND h.zona               = v.zona
-   -- Aquí suponemos que "tipo_accidente_id" corresponde al campo de hecho,
-   -- y "v.tipo_veh" era el campo numérico del tipo de vehículo; los unimos directamente.
-   AND h.tipo_accidente_id  = (v.tipo_veh::INTEGER)
 WHERE v.tipo_veh IS NOT NULL
   AND v.marca_veh IS NOT NULL
   AND v.color_veh IS NOT NULL

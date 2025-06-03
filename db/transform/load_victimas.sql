@@ -9,21 +9,28 @@ DROP TABLE IF EXISTS temp_victimas_map;
 
 -- Creamos la tabla temporal con la lógica mínima:
 -- - id_hecho: lo buscamos a partir de (fecha, cod_depto, cod_mupio, zona, tipo_eve)
--- - sexo: solo permitimos 'M' o 'F'; el resto queda NULL y se filtra luego
--- - edad viene directamente de stg_fallecidos
+-- - sexo: mapeamos los valores numéricos a 'M'/'F'
+-- - edad: validamos rango (0-120 años)
 -- - tipo_lesion_id: mapeamos "Fallecido" → 1, "Lesionado" → 2
 CREATE TEMP TABLE temp_victimas_map AS
-SELECT
+SELECT DISTINCT
   h.id_hecho                                                                 AS id_hecho,
-  -- Mapear sexo solo si es 'M' o 'F'; cualquier otro valor se convierte en NULL
+  -- Mapear sexo: 1 → 'M', 2 → 'F'
   CASE
-    WHEN UPPER(f.sexo) IN ('M','F') THEN UPPER(f.sexo)
+    WHEN f.sexo::TEXT = '1' THEN 'M'
+    WHEN f.sexo::TEXT = '2' THEN 'F'
     ELSE NULL
   END                                                                         AS sexo,
-  f.edad                                                                     AS edad,
+  -- Validar edad: entre 0 y 120 años
+  CASE 
+    WHEN f.edad BETWEEN 0 AND 120 THEN f.edad
+    ELSE NULL
+  END                                                                         AS edad,
+  -- Mapear tipo de lesión: 1 → Fallecido, 2 → Lesionado
   CASE
-    WHEN UPPER(f.fall_les) = 'FALLECIDO' THEN 1
-    ELSE 2
+    WHEN f.fall_les::TEXT = '1' THEN 1  -- Fallecido
+    WHEN f.fall_les::TEXT = '2' THEN 2  -- Lesionado
+    ELSE 2  -- Por defecto Lesionado
   END                                                                         AS tipo_lesion_id
 FROM stg_fallecidos f
   JOIN HECHOS h
@@ -32,7 +39,7 @@ FROM stg_fallecidos f
    AND h.cod_mupio           = f.cod_mupio
    AND h.zona                = f.zona
    AND h.tipo_accidente_id   = (f.tipo_eve::integer)
-WHERE f.sexo  IS NOT NULL
+WHERE f.sexo IS NOT NULL
   AND f.edad IS NOT NULL;
 
 -- Insertar en VICTIMAS solo las filas con sexo válido (M o F)
@@ -50,6 +57,8 @@ SELECT
 FROM temp_victimas_map tv
 WHERE tv.sexo IS NOT NULL
   AND tv.tipo_lesion_id IS NOT NULL
-ON CONFLICT ON CONSTRAINT VICTIMAS_pkey DO NOTHING;
+  AND tv.edad IS NOT NULL
+ON CONFLICT ON CONSTRAINT VICTIMAS_pkey DO UPDATE
+SET tipo_lesion_id = EXCLUDED.tipo_lesion_id;
 
 COMMIT;

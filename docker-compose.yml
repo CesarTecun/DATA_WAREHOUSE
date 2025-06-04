@@ -110,6 +110,29 @@ services:
     networks:
       - dw_net
 
+  # Servicio para ejecutar scripts SQL adicionales
+  db_setup:
+    image: postgres:15
+    container_name: db_setup
+    depends_on:
+      postgres_dw:
+        condition: service_healthy
+      etl:
+        condition: service_completed_successfully
+    environment:
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+      - PGUSER=${POSTGRES_USER}
+      - PGHOST=postgres_dw
+      - POSTGRES_DB=dw_transito
+    volumes:
+      - ./repoblar_dimensiones.sql:/scripts/repoblar_dimensiones.sql
+      - ./create_fact_accidentes.sql:/scripts/create_fact_accidentes.sql
+      - ./poblar_hechos_accidentes.sql:/scripts/poblar_hechos_accidentes.sql
+      - ./init-scripts.sh:/docker-entrypoint-initdb.d/init-scripts.sh
+    entrypoint: ["/bin/bash", "-c", "chmod +x /docker-entrypoint-initdb.d/init-scripts.sh && /docker-entrypoint-initdb.d/init-scripts.sh"]
+    networks:
+      - dw_net
+
   metabase:
     image: metabase/metabase:latest
     container_name: metabase_dw

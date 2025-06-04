@@ -5,6 +5,7 @@ services:
   postgres_dw:
     image: postgres:15
     container_name: postgres_dw
+    hostname: postgres_dw
     restart: unless-stopped
     environment:
       POSTGRES_DB: dw_transito
@@ -16,6 +17,11 @@ services:
       - dw_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d
       - ./data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dw_user -d dw_transito"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - dw_net
 
@@ -62,14 +68,27 @@ services:
     networks:
       - dw_net
   metabase:
-    image: metabase/metabase
+    image: metabase/metabase:latest
     container_name: metabase_dw
+    restart: unless-stopped
     ports:
       - "3000:3000"
     depends_on:
-      - postgres_dw
+      postgres_dw:
+        condition: service_healthy
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabase_config
+      MB_DB_PORT: 5432
+      MB_DB_USER: dw_user
+      MB_DB_PASS: dw_password
+      MB_DB_HOST: postgres_dw
+      JAVA_TIMEZONE: America/Guatemala
+    volumes:
+      - metabase_data:/metabase-data
     networks:
       - dw_net
 
 volumes:
   dw_data:
+  metabase_data:

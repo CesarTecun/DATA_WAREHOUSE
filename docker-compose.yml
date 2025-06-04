@@ -44,26 +44,52 @@ services:
         sleep 10;
         export PGPASSWORD=dw_password;
 
-        # 1) Cargar CSV planos a las tablas STG
-        psql -h postgres_dw -U dw_user -d dw_transito -c \"\\copy stg_hechos FROM '/app/data/stg_hechos.csv' CSV HEADER;\" &&
-        psql -h postgres_dw -U dw_user -d dw_transito -c \"\\copy stg_fallecidos FROM '/app/data/stg_fallecidos.csv' CSV HEADER;\" &&
-        psql -h postgres_dw -U dw_user -d dw_transito -c \"\\copy stg_vehiculos FROM '/app/data/stg_vehiculos.csv' CSV HEADER;\" &&
+        # Verificar si ya se han cargado datos
+        if ! psql -h postgres_dw -U dw_user -d dw_transito -tAc \"SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'control_ejecucion'\" | grep -q 1; then
+          echo '🔄 Creando tabla de control de ejecución...';
+          psql -h postgres_dw -U dw_user -d dw_transito -c \"
+            CREATE TABLE IF NOT EXISTS control_ejecucion (
+              id SERIAL PRIMARY KEY,
+              proceso VARCHAR(100) NOT NULL,
+              fecha_ejecucion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              registros_afectados INT
+            );
+          \";
+        fi
 
-        # 2) Transformar STG_RAW → OLTP
-        psql -h postgres_dw -U dw_user -d dw_transito -f /app/transform/load_hechos.sql &&
-        psql -h postgres_dw -U dw_user -d dw_transito -f /app/transform/load_victimas.sql &&
-        psql -h postgres_dw -U dw_user -d dw_transito -f /app/transform/load_vehiculos.sql &&
+        # Verificar si ya se ha ejecutado el ETL
+        if ! psql -h postgres_dw -U dw_user -d dw_transito -tAc \"SELECT 1 FROM control_ejecucion WHERE proceso = 'carga_inicial'\" | grep -q 1; then
+          echo '🚀 Iniciando proceso ETL...';
+          
+          # 1) Cargar CSV planos a las tablas STG
+          psql -h postgres_dw -U dw_user -d dw_transito -c \"TRUNCATE stg_hechos, stg_fallecidos, stg_vehiculos CASCADE;\"
+          psql -h postgres_dw -U dw_user -d dw_transito -c \"\\copy stg_hechos FROM '/app/data/stg_hechos.csv' CSV HEADER;\" &&
+          psql -h postgres_dw -U dw_user -d dw_transito -c \"\\copy stg_fallecidos FROM '/app/data/stg_fallecidos.csv' CSV HEADER;\" &&
+          psql -h postgres_dw -U dw_user -d dw_transito -c \"\\copy stg_vehiculos FROM '/app/data/stg_vehiculos.csv' CSV HEADER;\" &&
 
-        # 3) Actualizar contadores en HECHOS
-        python3 /app/etl_scripts/actualizar_contadores.py &&
+          # 2) Transformar STG_RAW → OLTP
+          psql -h postgres_dw -U dw_user -d dw_transito -f /app/transform/load_hechos.sql &&
+          psql -h postgres_dw -U dw_user -d dw_transito -f /app/transform/load_victimas.sql &&
+          psql -h postgres_dw -U dw_user -d dw_transito -f /app/transform/load_vehiculos.sql &&
 
-        # 4) Generar CSV planos
-        python3 /app/etl_scripts/generar_accidentes_csv.py &&
+          # 3) Actualizar contadores en HECHOS
+          python3 /app/etl_scripts/actualizar_contadores.py &&
 
-        # 5) Poblar el Data Warehouse dimensional
-        python3 /app/etl_scripts/populate_dw_updated.py
+          # 4) Generar CSV planos
+          python3 /app/etl_scripts/generar_accidentes_csv.py &&
 
-        echo '✅ ETL completo';
+          # 5) Poblar el Data Warehouse dimensional
+          python3 /app/etl_scripts/populate_dw_updated.py
+
+          # Registrar la ejecución exitosa
+          psql -h postgres_dw -U dw_user -d dw_transito -c \"
+            INSERT INTO control_ejecucion (proceso, registros_afectados)
+            VALUES ('carga_inicial', (SELECT COUNT(*) FROM hechos));
+          \"
+          echo '✅ ETL completado exitosamente';
+        else
+          echo 'ℹ️ El ETL ya fue ejecutado anteriormente. Para forzar una nueva ejecución, elimina el registro de la tabla control_ejecucion';
+        fi
       "
     networks:
       - dw_net

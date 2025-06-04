@@ -87,3 +87,18 @@ FROM fact_accidentes fa
 JOIN dim_fecha df ON df.fecha_id = fa.fecha_id
 JOIN dim_ubicacion du ON du.ubicacion_id = fa.ubicacion_id
 JOIN dim_tipo_accidente dta ON dta.tipo_accidente_id = fa.tipo_accidente_id;
+
+--4. Vista para análisis de víctimas por año, mes y sexo
+-- Proporciona un resumen del número total de víctimas agrupadas por año, mes y sexo
+-- Útil para análisis de tendencias temporales y distribución por género
+CREATE OR REPLACE VIEW vw_victimas_por_mes_y_sexo AS
+SELECT 
+    df.anio,
+    df.mes,
+    v.sexo,
+    COUNT(*) AS total_victimas
+FROM HECHOS h
+JOIN VICTIMAS v ON h.id_hecho = v.id_hecho
+JOIN dim_fecha df ON df.fecha = h.fecha_incidente
+GROUP BY df.anio, df.mes, v.sexo
+ORDER BY df.anio, df.mes, v.sexo;

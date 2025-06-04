@@ -469,8 +469,10 @@ INSERT INTO ref_tipo_vehiculo (cod_tipo, descripcion) VALUES
   (43, 'Tranvía'),
   (44, 'Trolebús'),
   (45, 'Trimoto'),
-  (99, 'Otro tipo de vehículo')
-ON CONFLICT (cod_tipo) DO NOTHING;
+  (99, 'Tipo de vehículo no identificado')
+ON CONFLICT (cod_tipo) DO UPDATE 
+  SET descripcion = 'Tipo de vehículo no identificado'
+  WHERE ref_tipo_vehiculo.cod_tipo = 99;
 
 -- Insertar valores iniciales para colores de vehículo
 INSERT INTO ref_color_vehiculo (cod_color, descripcion) VALUES
@@ -489,8 +491,10 @@ INSERT INTO ref_color_vehiculo (cod_color, descripcion) VALUES
   (13, 'Naranja'),
   (14, 'Violeta'),
   (15, 'Rosa'),
-  (99, 'Otro color')
-ON CONFLICT (cod_color) DO NOTHING;
+  (99, 'Color no identificado')
+ON CONFLICT (cod_color) DO UPDATE 
+  SET descripcion = 'Color no identificado' 
+  WHERE ref_color_vehiculo.cod_color = 99;
 
 -- Insertar valores iniciales para marcas de vehículo
 INSERT INTO ref_marca_vehiculo (cod_marca, descripcion) VALUES
@@ -536,8 +540,10 @@ INSERT INTO ref_marca_vehiculo (cod_marca, descripcion) VALUES
   (40, 'Toyota'),
   (41, 'Volkswagen'),
   (42, 'Volvo'),
-  (99, 'Otra marca')
-ON CONFLICT (cod_marca) DO NOTHING;
+  (99, 'Marca no identificada')
+ON CONFLICT (cod_marca) DO UPDATE 
+  SET descripcion = 'Marca no identificada' 
+  WHERE ref_marca_vehiculo.cod_marca = 99;
 
 -- NOTA: Esta tabla es necesaria para el modelo transaccional, ya que se usa en VICTIMAS
 -- y debe tener los valores iniciales establecidos antes de crear las tablas transaccionales

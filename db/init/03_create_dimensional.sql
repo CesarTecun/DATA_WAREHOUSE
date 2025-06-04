@@ -74,8 +74,10 @@ INSERT INTO dim_tipo_accidente (tipo_accidente_id, descripcion) VALUES
   (10, 'Vuelco sin colisión'),
   (11, 'Colisión con animal'),
   (12, 'Colisión con tren'),
-  (99, 'Otro tipo de accidente')
-ON CONFLICT (tipo_accidente_id) DO NOTHING;
+  (99, 'Tipo de accidente no identificado')
+ON CONFLICT (tipo_accidente_id) DO UPDATE 
+  SET descripcion = 'Tipo de accidente no identificado' 
+  WHERE dim_tipo_accidente.tipo_accidente_id = 99;
 
 -- ======================================
 -- 3) Tabla de Hechos

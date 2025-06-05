@@ -9,7 +9,7 @@ y llena las tablas DIM_FECHA, DIM_HORA, DIM_UBICACION y FACT_ACCIDENTE.
 
 import os
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 DB_HOST = os.getenv("DB_HOST", "postgres_dw")
 DB_PORT = os.getenv("DB_PORT", "5432")
@@ -21,100 +21,74 @@ DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine = create_engine(DATABASE_URL)
 
 def cargar_dim_fecha():
-    query = "SELECT DISTINCT fecha_incidente FROM HECHOS ORDER BY fecha_incidente;"
-    df_fechas = pd.read_sql(query, engine)
+    query = """
+    SELECT DISTINCT 
+        fecha_incidente::date as fecha_incidente
+    FROM HECHOS 
+    WHERE fecha_incidente IS NOT NULL
+    ORDER BY fecha_incidente;
+    """
+    df = pd.read_sql(query, engine)
+    df['fecha_incidente'] = pd.to_datetime(df['fecha_incidente'])
 
-    df_fechas['fecha_id'] = df_fechas['fecha_incidente'].dt.strftime('%Y%m%d').astype(int)
-    df_fechas['anio'] = df_fechas['fecha_incidente'].dt.year
-    df_fechas['mes'] = df_fechas['fecha_incidente'].dt.month
-    df_fechas['nombre_mes'] = df_fechas['fecha_incidente'].dt.strftime('%B').str.title()
-    df_fechas['trimestre'] = df_fechas['fecha_incidente'].dt.quarter
-    df_fechas['dia_mes'] = df_fechas['fecha_incidente'].dt.day
-    df_fechas['dia_semana'] = df_fechas['fecha_incidente'].dt.weekday + 1  # 1=lunes … 7=domingo
-    df_fechas['nombre_dia_sem'] = df_fechas['fecha_incidente'].dt.strftime('%A').str.title()
-    df_fechas['es_fin_de_semana'] = df_fechas['dia_semana'].apply(lambda d: 'S' if d in (6,7) else 'N')
-    df_fechas['es_festivo'] = 'N'
-
-    df_dim = df_fechas.rename(columns={'fecha_incidente': 'fecha'})
-    df_dim = df_dim[[
-        'fecha_id', 'fecha', 'anio', 'mes', 'nombre_mes',
-        'trimestre', 'dia_mes', 'dia_semana', 'nombre_dia_sem',
-        'es_fin_de_semana', 'es_festivo'
-    ]]
+    df_dim = pd.DataFrame()
+    df_dim['fecha'] = df['fecha_incidente']
+    df_dim['anio'] = df['fecha_incidente'].dt.year
+    df_dim['mes'] = df['fecha_incidente'].dt.month
+    df_dim['dia'] = df['fecha_incidente'].dt.day
+    df_dim['dia_semana'] = df['fecha_incidente'].dt.strftime('%A').str.title()
 
     with engine.begin() as conn:
-        conn.execute("TRUNCATE TABLE DIM_FECHA;")
-        df_dim.to_sql('dim_fecha', conn, if_exists='append', index=False)
+        conn.execute(text("SET session_replication_role = 'replica';"))
+        conn.execute(text("TRUNCATE TABLE dim_fecha CASCADE;"))
+        conn.execute(text("SET session_replication_role = 'origin';"))
+        df_dim.to_sql("dim_fecha", conn, if_exists="append", index=False, method='multi')
 
 def cargar_dim_hora():
-    horas = []
-    for h in range(24):
-        horas.append({'hora_id': h, 'hora_24h': h, 'descripcion': f"{h:02d}:00"})
-    df_hora = pd.DataFrame(horas)
+    data = [{'hora_id': h, 'hora_24h': h, 'descripcion': f"{h:02d}:00"} for h in range(24)]
+    df = pd.DataFrame(data)
     with engine.begin() as conn:
-        conn.execute("TRUNCATE TABLE DIM_HORA;")
-        df_hora.to_sql('dim_hora', conn, if_exists='append', index=False)
+        conn.execute(text("SET session_replication_role = 'replica';"))
+        conn.execute(text("TRUNCATE TABLE dim_hora CASCADE;"))
+        conn.execute(text("SET session_replication_role = 'origin';"))
+        df.to_sql("dim_hora", conn, if_exists="append", index=False, method='multi')
 
 def cargar_dim_ubicacion():
     query = """
-    SELECT 
-      m.municipio_id    AS ubicacion_id,
-      d.nombre_departamento,
-      m.nombre_municipio AS municipio
-    FROM CAT_MUNICIPIO m
-    JOIN CAT_DEPARTAMENTO d ON m.departamento_id = d.departamento_id
-    ORDER BY d.nombre_departamento, m.nombre_municipio;
+    SELECT DISTINCT 
+        h.cod_depto, h.cod_mupio, h.zona
+    FROM HECHOS h
+    WHERE h.cod_depto IS NOT NULL AND h.cod_mupio IS NOT NULL;
     """
-    df_ubi = pd.read_sql(query, engine)
+    df = pd.read_sql(query, engine)
     with engine.begin() as conn:
-        conn.execute("TRUNCATE TABLE DIM_UBICACION;")
-        df_ubi.to_sql('dim_ubicacion', conn, if_exists='append', index=False)
+        conn.execute(text("SET session_replication_role = 'replica';"))
+        conn.execute(text("TRUNCATE TABLE dim_ubicacion CASCADE;"))
+        conn.execute(text("SET session_replication_role = 'origin';"))
+        df.to_sql("dim_ubicacion", conn, if_exists="append", index=False, method='multi')
 
 def cargar_fact_accidente():
     query = """
+    INSERT INTO hechos_accidentes (
+      fecha_id, ubicacion_id, persona_id, vehiculo_id, tipo_accidente_id,
+      num_heridos, num_fallecidos
+    )
     SELECT
-      h.id_hecho AS accidente_id,
-      TO_CHAR(h.fecha_incidente,'YYYYMMDD')::INTEGER AS fecha_id,
-      h.municipio_id AS ubicacion_id,
-      CASE
-        WHEN h.hora_incidente IS NOT NULL
-        THEN CAST(SPLIT_PART(h.hora_incidente, ':', 1) AS INTEGER)
-        ELSE NULL
-      END AS hora_id,
-      h.num_total_vehiculos   AS num_vehiculos,
-      h.num_total_victimas    AS num_victimas,
-      COALESCE(sub_fale.cnt, 0) AS num_fallecidos,
-      COALESCE(sub_les.cnt, 0)  AS num_lesionados,
-      h.tipo_via               AS tipo_via,
-      h.condicion_climatica    AS condicion_clima,
-      h.duracion_intervencion  AS duracion_interv
+      df.fecha_id, du.ubicacion_id, dp.persona_id, dv.vehiculo_id, h.tipo_accidente_id,
+      SUM(CASE WHEN v.tipo_lesion_id = 2 THEN 1 ELSE 0 END),
+      SUM(CASE WHEN v.tipo_lesion_id = 1 THEN 1 ELSE 0 END)
     FROM HECHOS h
-    LEFT JOIN (
-      SELECT id_hecho, COUNT(*) AS cnt
-      FROM VICTIMAS
-      WHERE tipo_lesion_id = (
-        SELECT tipo_lesion_id 
-        FROM CAT_TIPO_LESION 
-        WHERE UPPER(descripcion) = 'FALLECIDO'
-      )
-      GROUP BY id_hecho
-    ) sub_fale ON sub_fale.id_hecho = h.id_hecho
-    LEFT JOIN (
-      SELECT id_hecho, COUNT(*) AS cnt
-      FROM VICTIMAS
-      WHERE tipo_lesion_id <> (
-        SELECT tipo_lesion_id 
-        FROM CAT_TIPO_LESION 
-        WHERE UPPER(descripcion) = 'FALLECIDO'
-      )
-      GROUP BY id_hecho
-    ) sub_les ON sub_les.id_hecho = h.id_hecho;
+      JOIN dim_fecha df ON df.fecha = h.fecha_incidente
+      JOIN dim_ubicacion du ON du.cod_depto = h.cod_depto AND du.cod_mupio = h.cod_mupio AND du.zona = h.zona
+      JOIN VICTIMAS v ON v.id_hecho = h.id_hecho
+      JOIN dim_persona dp ON dp.sexo = v.sexo AND dp.edad = v.edad AND dp.condicion = CASE WHEN v.tipo_lesion_id = 1 THEN 'Fallecido' ELSE 'Lesionado' END
+      JOIN VEHICULOS ve ON ve.id_hecho = h.id_hecho
+      JOIN dim_vehiculo dv ON dv.tipo_vehiculo = ve.cod_tipo AND dv.marca = ve.cod_marca AND dv.color = ve.cod_color AND dv.modelo = ve.modelo
+    GROUP BY df.fecha_id, du.ubicacion_id, dp.persona_id, dv.vehiculo_id, h.tipo_accidente_id
+    ON CONFLICT DO NOTHING;
     """
-    df_fact = pd.read_sql(query, engine)
-
     with engine.begin() as conn:
-        conn.execute("TRUNCATE TABLE FACT_ACCIDENTE;")
-        df_fact.to_sql('fact_accidente', conn, if_exists='append', index=False)
+        conn.execute(text(query))
 
 def main():
     print("→ Cargando DIM_FECHA…")
@@ -126,6 +100,6 @@ def main():
     print("→ Cargando FACT_ACCIDENTE…")
     cargar_fact_accidente()
     print("✓ Data Warehouse dimensional poblado.")
-    
+
 if __name__ == "__main__":
     main()

@@ -469,63 +469,44 @@ ON CONFLICT (cod_color) DO UPDATE
   SET descripcion = 'Color no identificado' 
   WHERE ref_color_vehiculo.cod_color = 99;
 
--- Insertar valores iniciales para marcas de vehículo
+-- Insertar valores iniciales para marcas de vehículo adaptadas a Guatemala
 INSERT INTO ref_marca_vehiculo (cod_marca, descripcion) VALUES
-  (1,  'Alfa Romeo'),
-  (2,  'Aston Martin'),
-  (3,  'Audi'),
-  (4,  'Bentley'),
-  (5,  'BMW'),
-  (6,  'Bugatti'),
-  (7,  'Cadillac'),
-  (8,  'Chevrolet'),
-  (9,  'Chrysler'),
-  (10, 'Citroën'),
-  (11, 'Dodge'),
-  (12, 'Ferrari'),
-  (13, 'Fiat'),
-  (14, 'Ford'),
-  (15, 'Honda'),
-  (16, 'Hyundai'),
-  (17, 'Infiniti'),
-  (18, 'Jaguar'),
-  (19, 'Jeep'),
-  (20, 'Kia'),
-  (21, 'Lamborghini'),
-  (22, 'Land Rover'),
-  (23, 'Lexus'),
-  (24, 'Maserati'),
-  (25, 'Mazda'),
-  (26, 'Mercedes-Benz'),
-  (27, 'Mini'),
-  (28, 'Mitsubishi'),
-  (29, 'Nissan'),
-  (30, 'Peugeot'),
-  (31, 'Porsche'),
-  (32, 'Renault'),
-  (33, 'Rolls-Royce'),
-  (34, 'Seat'),
-  (35, 'Skoda'),
-  (36, 'Smart'),
-  (37, 'Subaru'),
-  (38, 'Suzuki'),
-  (39, 'Tesla'),
-  (40, 'Toyota'),
-  (41, 'Volkswagen'),
-  (42, 'Volvo'),
+  (1,  'Toyota'),
+  (2,  'Nissan'),
+  (3,  'Hyundai'),
+  (4,  'Kia'),
+  (5,  'Chevrolet'),
+  (6,  'Mazda'),
+  (7,  'Volkswagen'),
+  (8,  'Ford'),
+  (9,  'Honda'),
+  (10, 'Mitsubishi'),
+  (11, 'Isuzu'),
+  (12, 'Daihatsu'),
+  
+  -- Motocicletas más comunes
+  (13, 'Bajaj'),
+  (14, 'Yamaha'),
+  (15, 'Suzuki'),
+  (16, 'Italika'),
+  (17, 'Hero'),
+  (18, 'TVS'),
+  (19, 'Lifan'),
+  (20, 'Zongshen'),
+  (21, 'Haojue'),
+
+  -- Chinos y comerciales
+  (22, 'BYD'),
+  (23, 'Geely'),
+  (24, 'Changan'),
+  (25, 'JAC'),
+  (26, 'Great Wall'),
+  (27, 'Foton'),
+  (28, 'DFSK'),
+  (29, 'Jetour'),
+  (30, 'BMC'),
+
   (99, 'Marca no identificada')
 ON CONFLICT (cod_marca) DO UPDATE 
   SET descripcion = 'Marca no identificada' 
   WHERE ref_marca_vehiculo.cod_marca = 99;
-
--- NOTA: Esta tabla es necesaria para el modelo transaccional, ya que se usa en VICTIMAS
--- y debe tener los valores iniciales establecidos antes de crear las tablas transaccionales
-
--- NOTA: Todas las tablas de catálogo tienen ON CONFLICT DO NOTHING para permitir
---       múltiples ejecuciones del script sin errores de duplicidad
-
--- NOTA: Se cambió SERIAL por INTEGER para mejor control de los códigos,
---       ya que todos los códigos serán insertados manualmente con valores específicos
-
--- NOTA: La tabla cat_tipo_participacion ha sido eliminada ya que no se usa en el modelo transaccional ni dimensional
--- y no hay referencias a ella en las tablas transaccionales

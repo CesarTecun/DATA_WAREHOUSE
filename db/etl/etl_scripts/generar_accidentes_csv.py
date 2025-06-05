@@ -66,8 +66,28 @@ df_h_stg = df_h_stg[["fecha","cod_depto","cod_mupio","zona","tipo_eve"]]
 df_h_stg.to_csv(CSV_HECH, index=False, encoding="utf-8")
 print("✅ Generado:", CSV_HECH)
 
-# c) Vehículos Involucrados
+# c) Vehículos
+print("📊 Leyendo archivo de vehículos...")
 df_v = pd.read_excel(XLSX_VEH)
+
+# Limpieza de códigos especiales
+print(f"📊 Registros antes de limpieza: {len(df_v)}")
+
+# 1. Convertir 999 a 99 en marca_veh (marca no identificada)
+df_v['marca_veh'] = df_v['marca_veh'].replace(999, 99)
+
+# 2. Convertir 9999 y valores vacíos a None en modelo_veh
+df_v['modelo_veh'] = df_v['modelo_veh'].replace([9999, '', ' '], None)
+# Asegurarse de que los valores sean numéricos o None
+df_v['modelo_veh'] = pd.to_numeric(df_v['modelo_veh'], errors='coerce').astype('Int64')
+
+# 3. Verificar códigos de tipo de vehículo (opcional, asegura que existan en ref_tipo_vehiculo)
+# df_v['tipo_veh'] = df_v['tipo_veh'].replace(999, 99)  # Si es necesario
+
+print(f"📊 Registros después de limpieza: {len(df_v)}")
+print("🔍 Resumen de marcas de vehículos:")
+print(df_v['marca_veh'].value_counts().head())
+
 df_v_stg = df_v[[
     "año_ocu","mes_ocu","dia_ocu",
     "depto_ocu","mupio_ocu","zona_ocu",
@@ -102,12 +122,30 @@ def cargar_csv(csv_file, tabla, cols):
     with open(csv_file, newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            vals = [row[c] for c in cols]
-            placeholders = ",".join(["%s"] * len(vals))
-            cur.execute(
-                f"INSERT INTO {tabla} ({','.join(cols)}) VALUES ({placeholders});",
-                vals
-            )
+            # Procesar cada valor: convertir cadenas vacías a None
+            vals = []
+            for c in cols:
+                val = row[c]
+                # Si es una cadena vacía o solo espacios, convertir a None
+                if isinstance(val, str) and val.strip() == '':
+                    vals.append(None)
+                else:
+                    vals.append(val)
+            
+            # Construir la consulta con los nombres de columnas
+            placeholders = ",".join(["%s"] * len(cols))
+            query = f"""
+                INSERT INTO {tabla} ({','.join(cols)})
+                VALUES ({placeholders})
+                ON CONFLICT DO NOTHING;
+            """
+            try:
+                cur.execute(query, vals)
+            except Exception as e:
+                print(f"Error al insertar fila: {vals}")
+                print(f"Error: {e}")
+                conn.rollback()
+                raise
     conn.commit()
     print(f"📥 {tabla} cargada.")
 

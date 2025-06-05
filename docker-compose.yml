@@ -36,7 +36,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./db/transform:/app/transform
-      - ./db/etl:/app/etl_scripts
+      - ./db/etl/etl_scripts:/app/etl_scripts
     working_dir: /app
     command: >
       sh -c "

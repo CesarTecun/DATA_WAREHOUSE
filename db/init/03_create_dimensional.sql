@@ -24,6 +24,13 @@ CREATE TABLE IF NOT EXISTS dim_fecha (
     dia_semana   TEXT
 );
 
+CREATE TABLE dim_hora (
+    hora_id INTEGER PRIMARY KEY,           -- 0 a 23
+    hora_24h INTEGER NOT NULL,             -- redundante, igual a hora_id
+    descripcion VARCHAR(10) NOT NULL       -- formato "00:00", "01:00", ...
+);
+
+
 CREATE TABLE IF NOT EXISTS dim_ubicacion (
     ubicacion_id SERIAL PRIMARY KEY,
     cod_depto    INT    NOT NULL REFERENCES ref_departamentos(cod_depto),

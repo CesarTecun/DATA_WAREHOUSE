@@ -423,56 +423,29 @@ ON CONFLICT (cod_depto, cod_mupio) DO NOTHING;
 
 
 -- Insertar valores iniciales para tipos de vehículo
+TRUNCATE TABLE ref_tipo_vehiculo RESTART IDENTITY;
+
 INSERT INTO ref_tipo_vehiculo (cod_tipo, descripcion) VALUES
-  (1,  'Ambulancia'),
-  (2,  'Araña'),
-  (3,  'Autobús'),
-  (4,  'Automóvil'),
-  (5,  'Bicicleta'),
-  (6,  'Bus urbano'),
-  (7,  'Bus extraurbano'),
-  (8,  'Cabezal'),
-  (9,  'Camión'),
-  (10, 'Camioneta'),
-  (11, 'Carretón'),
-  (12, 'Carro fúnebre'),
-  (13, 'Carro para golf'),
-  (14, 'Casa rodante'),
-  (15, 'Chasis'),
-  (16, 'Cisterna'),
-  (17, 'Cuatrimoto'),
-  (18, 'Furgón'),
-  (19, 'Furgoneta'),
-  (20, 'Go-kart'),
-  (21, 'Granelera (Góndola)'),
+  (1,  'Automóvil'),
+  (2,  'Camioneta'),
+  (3,  'Pick-up'),
+  (4,  'Motocicleta'),
+  (5,  'Camión'),
+  (6,  'Cabezal'),
+  (7,  'Bus extraurbano'),      
+  (8,  'Granelera (Góndola)'),  
+  (9,  'Microbús'),
+  (10, 'Bicicleta'),
+  (11, 'Mototaxi'),
+  (12, 'Bus urbano'),
+  (13, 'Furgoneta'),            
+  (16, 'Cisterna'),             
+  (18, 'Trailer'),              
   (22, 'Grúa'),
-  (23, 'Jaula cañera'),
-  (24, 'Jeep'),
-  (25, 'Limusina'),
-  (26, 'Minitractor'),
-  (27, 'Monta carga'),
-  (28, 'Motocicleta'),
-  (29, 'Motobicicleta'),
-  (30, 'Motoneta'),
-  (31, 'Motoniveladora'),
-  (32, 'Mototaxi'),
-  (33, 'Perforadora'),
-  (34, 'Pick-up'),
-  (35, 'Rastra'),
-  (36, 'Remolque'),
-  (37, 'Retroexcavadora'),
-  (38, 'Semirremolque'),
-  (39, 'Tractor'),
-  (40, 'Tracción animal'),
-  (41, 'Trailer'),
-  (42, 'Vehículo de transporte'),
-  (43, 'Tranvía'),
-  (44, 'Trolebús'),
-  (45, 'Trimoto'),
   (99, 'Tipo de vehículo no identificado')
 ON CONFLICT (cod_tipo) DO UPDATE 
-  SET descripcion = 'Tipo de vehículo no identificado'
-  WHERE ref_tipo_vehiculo.cod_tipo = 99;
+  SET descripcion = EXCLUDED.descripcion;
+
 
 -- Insertar valores iniciales para colores de vehículo
 INSERT INTO ref_color_vehiculo (cod_color, descripcion) VALUES
